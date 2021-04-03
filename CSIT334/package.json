@@ -1,0 +1,9 @@
+{
+  "name": "csit334",
+  "version": "0.0.0",
+  "description": "CSIT334",
+  "main": "server.js",
+  "author": {
+    "name": ""
+  }
+}
