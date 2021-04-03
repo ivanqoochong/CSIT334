@@ -118,7 +118,7 @@ app.get('/home', function (request, response) {
     }
 });
 //=========================================================
-//Report page==============================================
+//Add tour page============================================
 app.get('/addtour', function (request, response) {
     if (request.session.loggedin && request.session.role == "tourist") {
         response.sendFile(path.join(__dirname + '/html/create_tour.html'));
@@ -128,7 +128,8 @@ app.get('/addtour', function (request, response) {
     }
 });
 //========================================================
-//Login page
+
+//Login page============================================
 app.get('/login', function (request, response) {
     if (!request.session.loggedin) {
         response.sendFile(path.join(__dirname + '/html/login.html'));
@@ -138,7 +139,7 @@ app.get('/login', function (request, response) {
     }
 });
 //========================================================
-//
+
 //add tour================================================
 app.post('/writetour', function (request, response) {
     if (request.session.loggedin && request.session.role == "tourist") {
@@ -209,7 +210,9 @@ app.get('/delete', function (request, response) {
     }
 
 });
+//========================================================
 
+//Get tour list===========================================
 app.get('/tourlist', function (request, response) {
     var tourhtml = "&nbsp";
     if (request.session.loggedin) {
@@ -395,6 +398,7 @@ app.get('/search', function (request, response) {
     }
 });
 //========================================================
+
 //Join tour===============================================
 
 app.get('/join', function (request, response) {
@@ -557,6 +561,38 @@ app.get('/tour_detail', function (request, response) {
                           </div>
                           <ul class="list-group list-group-flush">
                             <li class="list-group-item"> Rating: <a id="rating">`+ results[0].rating + `</a> </li>
+                            <li class="list-group-item"> Vote: <form class="rating" method="post" action="rate">
+                              <label>
+                                <input type="radio" name="stars" value="1" />
+                                <span class="icon">&#128970;</span>
+                              </label>
+                              <label>
+                                <input type="radio" name="stars" value="2" />
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                              </label>
+                              <label>
+                                <input type="radio" name="stars" value="3" />
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>   
+                              </label>
+                              <label>
+                                <input type="radio" name="stars" value="4" />
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                              </label>
+                              <label>
+                                <input type="radio" name="stars" value="5" />
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                                <span class="icon">&#128970;</span>
+                              </label>
+                            </form> </li>
                             <li class="list-group-item"> Created Date: <a id="date">`+ results[0].date + `</a></li>
                             <li class="list-group-item"><a href="/join?tid=`+ tid +`" class="btn btn-primary">Join Tour</a></li>
                           </ul>
@@ -595,61 +631,131 @@ app.get('/tour_detail', function (request, response) {
                 response.end();
             }
             var html = `<!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <title>show tour</title>
-    <style media="screen">
+                <html lang="en" dir="ltr">
+                  <head>
+                    <meta charset="utf-8">
+                    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+                    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+                    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+                    <title>show tour</title>
+                    <style media="screen">
+                    .rating {
+                      display: inline-block;
+                      position: relative;
+                      height: 50px;
+                      line-height: 50px;
+                      font-size: 50px;
+                    }
 
-    .left{
-      margin-left: auto;
-      margin-right: auto;
-      width: 800px;
-    }
+                    .rating label {
+                      position: absolute;
+                      top: 0;
+                      left: 0;
+                      height: 100%;
+                      cursor: pointer;
+                    }
 
-    .right{
-      margin-right: auto;
-      margin-left: 5px;
-      display: inline-block;
-      float: right;
-    }
+                    .rating label:last-child {
+                      position: static;
+                    }
 
-    </style>
+                    .rating label:nth-child(1) {
+                      z-index: 5;
+                    }
 
-  </head>
-  <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-      <a class="navbar-brand" href="#">Tour Guy</a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+                    .rating label:nth-child(2) {
+                      z-index: 4;
+                    }
 
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav mr-auto">
-          <li class="nav-item active">
-            <a class="nav-link" href="/home">Home <span class="sr-only">(current)</span></a>
-          </li>
-          <li class="nav-item active">
-            <a class="nav-link" href="/tourlist">Review Tour<span class="sr-only">(current)</span></a>
-          </li>
-          <li class="nav-item active">
-            <a class="nav-link" href="#">My profile <span class="sr-only">(current)</span></a>
-          </li>
-        </ul>
-        <form class="form-inline my-2 my-lg-0">
-          <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
-          <button class="btn btn-primary" type="submit">Search</button>
-        </form>
-      </div>
-    </nav>
-<br>`
-                + tourDetail +
-                `</body>
-</html>`
+                    .rating label:nth-child(3) {
+                      z-index: 3;
+                    }
+
+                    .rating label:nth-child(4) {
+                      z-index: 2;
+                    }
+
+                    .rating label:nth-child(5) {
+                      z-index: 1;
+                    }
+
+                    .rating label input {
+                      position: absolute;
+                      top: 0;
+                      left: 0;
+                      opacity: 0;
+                    }
+
+                    .rating label .icon {
+                      float: left;
+                      color: transparent;
+                    }
+
+                    .rating label:last-child .icon {
+                      color: #000;
+                    }
+
+                    .rating:not(:hover) label input:checked ~ .icon,
+                    .rating:hover label:hover input ~ .icon {
+                      color: #09f;
+                    }
+
+                    .rating label input:focus:not(:checked) ~ .icon:last-child {
+                      color: #000;
+                      text-shadow: 0 0 5px #09f;
+                    }
+                    .left{
+                      margin-left: auto;
+                      margin-right: auto;
+                      width: 800px;
+                    }
+
+                    .right{
+                      margin-right: auto;
+                      margin-left: 5px;
+                      display: inline-block;
+                      float: right;
+                    }
+
+                    </style>
+
+                  </head>
+                  <body>
+                    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+                      <a class="navbar-brand" href="#">Tour Guy</a>
+                      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                      </button>
+
+                      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul class="navbar-nav mr-auto">
+                          <li class="nav-item active">
+                            <a class="nav-link" href="/home">Home <span class="sr-only">(current)</span></a>
+                          </li>
+                          <li class="nav-item active">
+                            <a class="nav-link" href="/tourlist">Review Tour<span class="sr-only">(current)</span></a>
+                          </li>
+                          <li class="nav-item active">
+                            <a class="nav-link" href="#">My profile <span class="sr-only">(current)</span></a>
+                          </li>
+                        </ul>
+                        <form class="form-inline my-2 my-lg-0">
+                          <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+                          <button class="btn btn-primary" type="submit">Search</button>
+                        </form>
+                      </div>
+                    </nav>
+                <br>`
+                                + tourDetail +
+                                `
+            <script type="text/javascript">
+                $(':radio').change(function() {
+                  $.post( "rate", {"rate": this.value, "tid": ` + tid + `});
+                });
+            </script>
+            </body>
+                </html>`
             response.setHeader('Content-type', 'text/html');
             response.write(html);
             response.end();
@@ -662,4 +768,30 @@ app.get('/tour_detail', function (request, response) {
 });
 
 //========================================================
-app.listen(5000);
+
+//Rate ===================================================
+app.post('/rate', function (request, response) {
+    console.log(request.body.rate);
+    console.log(request.body.tid);
+    var rate = request.body.rate;
+    var tid = request.body.tid
+    if (request.session.loggedin) {
+        connection.query('SELECT rating FROM tour WHERE id = ?', [tid], function (error, results, fields) {
+            if (results.length > 0) { 
+                var update_rate = (Number(results[0].rating) + Number(rate)) / 2;
+                update_rate = Math.floor(update_rate);
+                connection.query('UPDATE tour SET rating = ? WHERE id = ?', [update_rate, tid], function (error, results, fields) {
+                if (error) {
+                    response.redirect('/tour_detail?tid=' + tid);
+                } else {
+                    response.redirect('/tour_detail?tid=' + tid);
+                }
+            });
+            }
+        });
+    }
+});
+//========================================================
+var port = 5000;
+app.listen(port);
+console.log("Listening on: " + port)
