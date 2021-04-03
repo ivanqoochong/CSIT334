@@ -28,9 +28,28 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="html\create_tour.html" />
+    <Content Include="html\css\style.css" />
+    <Content Include="html\home.html" />
+    <Content Include="html\img\banner 1.jpg" />
+    <Content Include="html\img\banner 2.jpg" />
+    <Content Include="html\img\banner 3.jpg" />
+    <Content Include="html\img\checked.png" />
+    <Content Include="html\img\contact.png" />
+    <Content Include="html\img\img.jpg" />
+    <Content Include="html\img\whatweserve.jpg" />
+    <Content Include="html\img\whoarewe.png" />
+    <Content Include="html\login.html" />
+    <Content Include="html\register.html" />
+    <Content Include="html\style.css" />
     <Content Include="server.js" />
     <Content Include="package.json" />
     <Content Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="html\" />
+    <Folder Include="html\css\" />
+    <Folder Include="html\img\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
   <ProjectExtensions>

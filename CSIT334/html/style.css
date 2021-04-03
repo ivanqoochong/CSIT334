@@ -16,7 +16,7 @@ body{
 
 .img-left{
   width: 45%;
-  background: url('img.jpg') center;
+  background: url('https://raw.githubusercontent.com/RyanL-29/CSIT334/master/CSIT334/html/img/img.jpg') center;
   background-size: cover;
 }
 

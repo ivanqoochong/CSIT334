@@ -40,7 +40,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.get('/', function (request, response) {
-    response.redirect('/home');
+    if (request.session.loggedin) { response.redirect('/home'); }
+    else { response.redirect('/login');}
+    
 });
 //Login page==============================================
 app.post('/auth', function (request, response) {
@@ -52,9 +54,7 @@ app.post('/auth', function (request, response) {
                 if (results.length > 0) {
                     request.session.loggedin = true;
                     request.session.username = username;
-                    request.session.bugsubmit = false;
-                    if (results[0].admin == 1) { request.session.admin = true; }
-                    else if (results[0].reporter == 1) { request.session.reporter = true; }
+                    if (results[0].tourist == 1) { request.session.tourist = true; }
                     else { request.session.user = true; }
                     response.redirect('/home');
                     response.end();
@@ -90,7 +90,6 @@ app.post('/register', function (request, response) {
 			} else {
 				request.session.loggedin = true;
                 request.session.username = username;
-                request.session.bugsubmit = false;
 				response.redirect('/home');
 			}
 			response.end();
@@ -105,215 +104,18 @@ app.post('/register', function (request, response) {
 
 //Home page===============================================
 app.get('/home', function (request, response) {
-    if (request.session.loggedin) {
-        request.session.bugsubmit = false;
-        var icon;
-        if (request.session.admin == true) { icon = adminicon; }
-        else if (request.session.reporter == true) { icon = reportericon; }
-        else if (request.session.user == true) { icon = usericon; }
-        else { icon = usericon; }
-		response.setHeader('Content-type', 'text/html');
-        response.write(`<!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-                <title>home</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-                    <style media="screen">
-                        #welcome{
-                            padding-top: 60px;
-          padding-bottom: 50px;
-          text-align: center;
-        }
-        .image{
-         width: 200px;
-        }
-        #center{
-         margin-left: auto;
-         margin-right: auto;
-        }
-        table tr td{
-          padding-bottom: 30px;
-          text-align: center;
-        }
-      </style>
-  </head>
-                <body>
-                    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-                        <div class="container-fluid">
-                            <a class="navbar-brand" href="/">Bug Tracker</a>
-                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-                                <span class="navbar-toggler-icon"></span>
-                            </button>
-                            <div class="collapse navbar-collapse" id="navbarText">
-                                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                                    <li class="nav-item">
-                                        <a class="nav-link active" aria-current="page" href="/">Home</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/report">New Bug</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/aboutUs">About Us</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/bug">Bug Record</a>
-                                    </li>
-                                </ul>
-                            </div>
-                                <ul class="navbar-nav me-auto mb-2 mb-lg-0 navbar-right">
-                                <a class="user" href="#" style="color: white; text-decoration: inherit; white-space: nowrap;">`+ icon + ` Welcome ! `+ request.session.username + `</a>
-                                </ul>
-                        </div>
-                    </nav>
-
-                    <h1 id="welcome">Welcome to Bug Tracker</h1>
-
-                    <table id="center">
-                        <tr>
-                            <td> <a href="/report"><img src="https://raw.githubusercontent.com/RyanL-29/CSIT314/master/CSIT314/html/add.png" alt="" class="image"> </a> </td>
-
-  </tr>
-                            <tr>
-                                <td><a href="/report">New Bug</a></td>
-                            </tr>
-</table>
-
-
-
-                        <footer class="text-center text-white fixed-bottom" style="background-color: #000000;">
-                            <!-- Grid container -->
-  <div class="container p-4"></div>
-                            <!-- Grid container -->
-  <div class="container p-4 pb-0">
-                                <!-- Section: Social media -->
-      <section class="mb-4">
-                                    <!-- Facebook -->
-        <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"
-                                    > Contact Us</a>
-
-                                    <!-- Twitter -->
-        <a class="btn btn-outline-light btn-floating m-1" href="/aboutUs" role="button"
-                                    >About Us</a>
-
-                                </section>
-                                <!-- Section: Social media -->
-    </div>
-                            <!-- Grid container -->
-  <!-- Copyright -->
-  <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2);">
-                                &#169; 2020 Copyright:
-    <a class="text-white" href="https://mdbootstrap.com/">MDBootstrap.com</a>
-                            </div>
-                            <!-- Copyright -->
-</footer>
-  </body>
-</html>`);
-	response.end();
-	} else {
-        request.session.bugsubmit = false;
-		response.setHeader('Content-type', 'text/html');
-        response.write(`<!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-                <title>home</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-                    <style media="screen">
-                        #welcome{
-                            padding-top: 60px;
-          padding-bottom: 50px;
-          text-align: center;
-        }
-        .image{
-         width: 200px;
-        }
-        #center{
-         margin-left: auto;
-         margin-right: auto;
-        }
-        table tr td{
-          padding-bottom: 30px;
-          text-align: center;
-        }
-      </style>
-  </head>
-                <body>
-                    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-                        <div class="container-fluid">
-                            <a class="navbar-brand" href="/">Bug Tracker</a>
-                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-                                <span class="navbar-toggler-icon"></span>
-                            </button>
-                            <div class="collapse navbar-collapse" id="navbarText">
-                                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                                    <li class="nav-item">
-                                        <a class="nav-link active" aria-current="page" href="/">Home</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/report">New Bug</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/aboutUs">About Us</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/bug">Bug Record</a>
-                                    </li>
-                                </ul>
-                            </div>
-                                <ul class="navbar-nav me-auto mb-2 mb-lg-0 navbar-right">
-                                <a class="user" href="#" style="color: white; text-decoration: inherit; white-space: nowrap;">Welcome ! Guest</a>
-                                <a class="user" href="#" style="color: white; text-decoration: inherit; white-space: nowrap;">&nbsp;&nbsp;|&nbsp;&nbsp;</a>
-                                <a class="user" href="/login" style="color: white; text-decoration: inherit; white-space: nowrap;">Login</a>
-                                </ul>
-                        </div>
-                    </nav>
-
-                    <h1 id="welcome">Welcome to Bug Tracker</h1>
-
-                    <table id="center">
-                        <tr>
-                            <td> <a href="/report"><img src="https://raw.githubusercontent.com/RyanL-29/CSIT314/master/CSIT314/html/add.png" alt="" class="image"> </a> </td>
-
-  </tr>
-                            <tr>
-                                <td><a href="/report">New Bug</a></td>
-                            </tr>
-</table>
-
-
-
-                        <footer class="text-center text-white fixed-bottom" style="background-color: #000000;">
-                            <!-- Grid container -->
-  <div class="container p-4"></div>
-                            <!-- Grid container -->
-  <div class="container p-4 pb-0">
-                                <!-- Section: Social media -->
-      <section class="mb-4">
-                                    <!-- Facebook -->
-        <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"
-                                    > Contact Us</a>
-
-                                    <!-- Twitter -->
-        <a class="btn btn-outline-light btn-floating m-1" href="/aboutUs" role="button"
-                                    >About Us</a>
-
-                                </section>
-                                <!-- Section: Social media -->
-    </div>
-                            <!-- Grid container -->
-  <!-- Copyright -->
-  <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2);">
-                                &#169; 2020 Copyright:
-    <a class="text-white" href="https://mdbootstrap.com/">MDBootstrap.com</a>
-                            </div>
-                            <!-- Copyright -->
-</footer>
-  </body>
-</html>`);
-	response.end();
-	}
-	
+    if (request.session.loggedin && request.session.tourist == true) {
+        response.sendFile(path.join(__dirname + '/html/tourist_home.html'));
+        response.end();
+    }
+    else if (request.session.loggedin && request.session.user == true)
+    {
+        response.sendFile(path.join(__dirname + '/html/home.html'));
+        response.end();
+    }
+    else {
+        response.redirect('/login');
+    }
 });
 //=========================================================
 //Report page==============================================
@@ -731,4 +533,4 @@ app.get('/detail', function (request, response) {
 });
 
 //========================================================
-app.listen(3000);
+app.listen(5000);
