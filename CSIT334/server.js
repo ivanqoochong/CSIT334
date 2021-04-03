@@ -54,23 +54,23 @@ app.post('/auth', function (request, response) {
                 if (results.length > 0) {
                     request.session.loggedin = true;
                     request.session.username = username;
-                    if (results[0].tourist == 1) { request.session.tourist = true; }
-                    else { request.session.user = true; }
+                    if (results[0].tourist == 1) { request.session.role = "tourist"; request.session.toursubmit = false;}
+                    else { request.session.role = "user"; }
                     response.redirect('/home');
                     response.end();
                 } else {
-                    response.redirect('/auth');
+                    response.redirect('/login');
                     response.end();
                 }
             }
             else {
-                response.redirect('/auth');
+                response.redirect('/login');
                 response.end();
             }
 			
 		});
 	} else {
-        response.redirect('/auth');
+        response.redirect('/login');
 		response.end();
 	}
 });
@@ -90,6 +90,7 @@ app.post('/register', function (request, response) {
 			} else {
 				request.session.loggedin = true;
                 request.session.username = username;
+                request.session.role = "user";
 				response.redirect('/home');
 			}
 			response.end();
@@ -104,14 +105,13 @@ app.post('/register', function (request, response) {
 
 //Home page===============================================
 app.get('/home', function (request, response) {
-    if (request.session.loggedin && request.session.tourist == true) {
+    if (request.session.loggedin && request.session.role == "tourist") {
+        request.session.toursubmit = false;
         response.sendFile(path.join(__dirname + '/html/tourist_home.html'));
-        response.end();
     }
-    else if (request.session.loggedin && request.session.user == true)
+    else if (request.session.loggedin && request.session.role == "user")
     {
         response.sendFile(path.join(__dirname + '/html/home.html'));
-        response.end();
     }
     else {
         response.redirect('/login');
@@ -119,10 +119,9 @@ app.get('/home', function (request, response) {
 });
 //=========================================================
 //Report page==============================================
-app.get('/report', function (request, response) {
-    if (request.session.loggedin) {
-        request.session.bugsubmit = false;
-        response.sendFile(path.join(__dirname + '/html/New_bug.html'));
+app.get('/addtour', function (request, response) {
+    if (request.session.loggedin && request.session.role == "tourist") {
+        response.sendFile(path.join(__dirname + '/html/create_tour.html'));
     }
     else {
         response.sendFile(path.join(__dirname + '/html/login.html'));
@@ -140,9 +139,9 @@ app.get('/login', function (request, response) {
 });
 //========================================================
 //
-//Record bug==============================================
-app.post('/recordbug', function (request, response) {
-    if (request.session.loggedin) {
+//add tour================================================
+app.post('/writetour', function (request, response) {
+    if (request.session.loggedin && request.session.role == "tourist") {
         let date_ob = new Date();
         // current date
         // adjust 0 before single digit date
@@ -163,16 +162,15 @@ app.post('/recordbug', function (request, response) {
         // current seconds
         let seconds = date_ob.getSeconds();
         var subject = request.body.subject;
-        var errorcode = request.body.errorcode;
         var description = request.body.description;
         var username = request.session.username;
         var time = year + "-" + month + "-" + date + " " + hours + ":" + minutes + ":" + seconds;
-        if (subject && errorcode && description) {
-            connection.query('INSERT INTO report (username, subject, errorcode, description, time) VALUES (?,?,?,?,?)', [username, subject, errorcode, description, time], function (error, results) {
+        if (subject && description) {
+            connection.query('INSERT INTO tour (username, title, description, date) VALUES (?,?,?,?)', [username, subject, description, time], function (error, results) {
                 if (error) {
                     response.send('Something went wrong!! Error info:' + error);
                 } else {
-                    request.session.bugsubmit = true;
+                    request.session.toursubmit = true;
                     response.redirect('/submitted');
                 }
                 response.end();
@@ -188,7 +186,7 @@ app.post('/recordbug', function (request, response) {
 });
 
 app.get('/submitted', function (request, response) {
-    if (request.session.loggedin && request.session.bugsubmit == true) {
+    if (request.session.loggedin && request.session.toursubmit == true) {
         response.sendFile(path.join(__dirname + '/html/submitted.html'));
     }
     else {
@@ -196,18 +194,15 @@ app.get('/submitted', function (request, response) {
     }
 });
 
-app.get('/aboutUs', function (request, response) {
-        response.sendFile(path.join(__dirname + '/html/about_us.html'));
-});
-
-app.post('/close', function (request, response) {
-    var issueID = request.body.issueID;
-    if (issueID && request.session.loggedin) {
-        connection.query('UPDATE report SET status = 2 WHERE id = ?', [issueID], function (error, results) {
+app.get('/delete', function (request, response) {
+    var tid = request.query.tid;
+    var username = request.session.username;
+    if (tid && request.session.loggedin && request.session.role == "tourist") {
+        connection.query('DELETE FROM tour WHERE id = ? AND username = ?', [tid, username], function (error, results) {
             if (error) {
                 response.send('Something went wrong!! Error info:' + error);
             } else {
-                response.redirect('/bug');
+                response.redirect('/tourlist');
             }
             response.end();
         });
@@ -215,321 +210,455 @@ app.post('/close', function (request, response) {
 
 });
 
-app.post('/processing', function (request, response) {
-    var issueID = request.body.issueID;
-    if (issueID && request.session.loggedin) {
-        connection.query('UPDATE report SET status = 1 WHERE id = ?', [issueID], function (error, results) {
-            if (error) {
-                response.send('Something went wrong!! Error info:' + error);
-            } else {
-                response.redirect('/bug');
-            }
-            response.end();
-        });
-    }
+app.get('/tourlist', function (request, response) {
+    var tourhtml = "&nbsp";
+    if (request.session.loggedin) {
+        connection.query('SELECT * FROM tour', function (error, results, fields) {
+            if (results) {
+                if (results.length > 0) {
+                    for (var i = 0; i < results.length; i++) {
+                     tourhtml +=  `
+          <div class="list-group">
+            <a href="/tour_detail?tid=` + results[i].id + `" class="list-group-item list-group-item-action flex-column align-items-start">
+              <div class="d-flex w-100 justify-content-between">
+                <!--tittle-->
+                <h5 class="mb-1" id="tittle">` + results[i].title + `</h5>
 
-});
+                <!--date-->
+                <div class="">
+                  <small id="date">` + results[i].date + `</small>
+                  <p> <small>Rating:</small> ` + results[i].rating + ` </p>
+                </div>
+              </div>
+              <!--creator-->
+              <small>Created By:</small>
+              <small id="username">` + results[i].username + `</small>
+            </a>
+          </div>
 
-app.post('/reopen', function (request, response) {
-    var issueID = request.body.issueID;
-    if (issueID && request.session.loggedin) {
-        connection.query('UPDATE report SET status = 0 WHERE id = ?', [issueID], function (error, results) {
-            if (error) {
-                response.send('Something went wrong!! Error info:' + error);
-            } else {
-                response.redirect('/bug');
-            }
-            response.end();
-        });
-    }
 
-});
 
-app.get('/bug', function (request, response) {
-    var bugContent = `&nbsp`;
-    var statusicon;
-    connection.query('SELECT * FROM report', function (error, results, fields) {
-        if (results) {
-            if (results.length > 0) {
-                if (request.session.admin == 1 || request.session.reporter == 1) {
-                    for (let i = 0; i < results.length; i++) {
-                        if (results[i].status == 0) { statusicon = openicon; }
-                        else if (results[i].status == 1) { statusicon = processingicon; }
-                        else if (results[i].status == 2) { statusicon = closeicon; }
-                        else { statusicon = openicon; }
-                        bugContent += `<div class="list-group" style="width:50%; margin-left:auto; margin-right:auto; margin-bottom:15px;">
-                                <a href="/detail?rn=`+ results[i].id + `" class="list-group-item list-group-item-action flex-column align-items-start">
-                                  <div class="d-flex w-100 justify-content-between">
-                                    <!--title-->
-                                    <h5 class="mb-1" id="title">` + results[i].subject + ` Error: ` + results[i].errorcode + `</h5>
-                                    <!--date-->
-                                    <small id="date">                                   
-                                    <div>
-                                    <form style="display:inline;" action="close" method="post">
-                                        <input type="submit" name="upvote" value="Close" />
-                                        <input name='issueID' type='hidden' value='`+ results[i].id + `'>
-                                    </form>
-                                    <form style="display:inline;" action="processing" method="post">
-                                        <input type="submit" name="upvote" value="Processing" />
-                                        <input name='issueID' type='hidden' value='`+ results[i].id + `'>
-                                    </form>
-                                    <form style="display:inline;" action="reopen" method="post">
-                                        <input type="submit" name="reopen" value="Re-Open" />
-                                        <input name='issueID' type='hidden' value='`+ results[i].id + `'>
-                                    </form>
-                                    </div>
-                                    Published on:\n `+ results[i].time + ` ` + statusicon + `
-                                   </small>
-                                  </div>
-                                  <!--creator-->
-                                  <small>Created By: ` + results[i].username + `</small>
-                                   <br>
-                                  <small>Issue ID: #` + results[i].id + `</small>
-                                </a>
-                              </div>`;
+  `;
                     }
-                }
-                else {
-                    for (let i = 0; i < results.length; i++) {
-                        if (results[i].status == 0) { statusicon = openicon; }
-                        else if (results[i].status == 1) { statusicon = processingicon; }
-                        else if (results[i].status == 2) { statusicon = closeicon; }
-                        else { statusicon = openicon; }
-                        if (results[i].username == request.session.username) {
-                            bugContent += `<div class="list-group" style="width:50%; margin-left:auto; margin-right:auto; margin-bottom:15px;">
-                                <a href="/detail?rn=`+ results[i].id + `" class="list-group-item list-group-item-action flex-column align-items-start">
-                                  <div class="d-flex w-100 justify-content-between">
-                                    <!--title-->
-                                    <h5 class="mb-1" id="title">` + results[i].subject + ` Error: ` + results[i].errorcode + `</h5>
-                                    <!--date-->
-                                    <small id="date">                                   
-                                    <div>
-                                    <form style="display:inline;" action="close" method="post">
-                                        <input type="submit" name="upvote" value="Close" />
-                                        <input name='issueID' type='hidden' value='`+ results[i].id + `'>
-                                    </form>
-                                    <form style="display:inline;" action="reopen" method="post">
-                                        <input type="submit" name="reopen" value="Re-Open" />
-                                        <input name='issueID' type='hidden' value='`+ results[i].id + `'>
-                                    </form>
-                                    </div>
-                                    Published on:\n `+ results[i].time + ` ` + statusicon + `
-                                   </small>
-                                  </div>
-                                  <!--creator-->
-                                  <small>Created By: ` + results[i].username + `</small>
-                                   <br>
-                                  <small>Issue ID: #` + results[i].id + `</small>
-                                </a>
-                              </div>`;
-                        }
-                        else {
-                            bugContent += `<div class="list-group" style="width:50%; margin-left:auto; margin-right:auto; margin-bottom:15px;">
-                                    <a href="/detail?rn=`+ results[i].id + `" class="list-group-item list-group-item-action flex-column align-items-start">
-                                      <div class="d-flex w-100 justify-content-between">
-                                        <!--title-->
-                                        <h5 class="mb-1" id="title">` + results[i].subject + ` Error: ` + results[i].errorcode + `</h5>
-                                        <!--date-->
-                                        <small id="date">Published on:\n `+ results[i].time + ` ` + statusicon + `</small>
-                                      </div>
-                                      <!--creator-->
-                                      <small>Created By: ` + results[i].username + `</small>
-                                       <br>
-                                      <small>Issue ID: #` + results[i].id + `</small>
-                                    </a>
-                                  </div>`;
-                        }
-                    }
-                }
-                var html = `<!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-                <title>home</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-                    <style media="screen">
-                        #welcome{
-                            padding-top: 60px;
-          padding-bottom: 50px;
-          text-align: center;
-        }
-        .image{
-         width: 200px;
-        }
-        #center{
-         margin-left: auto;
-         margin-right: auto;
-        }
-        table tr td{
-          padding-bottom: 30px;
-          text-align: center;
-        }
-      </style>
+                    html = `<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <title>show tour</title>
+
+
   </head>
-                <body>
-                    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-                        <div class="container-fluid">
-                            <a class="navbar-brand" href="/">Bug Tracker</a>
-                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-                                <span class="navbar-toggler-icon"></span>
-                            </button>
-                            <div class="collapse navbar-collapse" id="navbarText">
-                                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                                    <li class="nav-item">
-                                        <a class="nav-link active" aria-current="page" href="/">Home</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/report">New Bug</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/aboutUs">About Us</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/bug">Bug Record</a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </nav>
-                <br>`
-                    + bugContent +
-                    `</body>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <a class="navbar-brand" href="/home">Tour Guy</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="/home">Home <span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="/review">Review Tour<span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="#">My profile <span class="sr-only">(current)</span></a>
+          </li>
+        </ul>
+        <form class="form-inline my-2 my-lg-0" action="search" method="get">
+          <input class="form-control mr-sm-2" name ="keyword" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+      </div>
+    </nav>
+
+
+    <br>
+`+ tourhtml +`
+</body>
 </html>`
-                response.setHeader('Content-type', 'text/html');
-                response.write(html);
-                response.end();
+                    response.setHeader('Content-type', 'text/html');
+                    response.write(html);
+                    response.end();
+                } else {
+                    response.setHeader('Content-type', 'text/html');
+                    response.send('No Tour Yet');
+                    response.end();
+                }
             } else {
-                response.setHeader('Content-type', 'text/html');
-                response.send('No Issue Yet');
-                response.end();
+                response.redirect('/home');
             }
-        } else {
-            response.redirect('/home');
-        }
-    });
+        });
+    }
+    else {
+        response.redirect('/login');
+    }
 });
 //========================================================
 
-//Detail report===========================================
+//Search tour=============================================
+app.get('/search', function (request, response) {
+    var keyword = request.query.keyword;
+    var tourhtml = "&nbsp";
+    if (request.session.loggedin) {
+        connection.query('SELECT * FROM tour WHERE id LIKE ? OR title LIKE ? OR description LIKE ?', [keyword, keyword, keyword], function (error, results, fields) {
+            if (results) {
+                if (results.length >= 0) {
+                    for (var i = 0; i < results.length; i++) {
+                        tourhtml += `
+          <div class="list-group">
+            <a href="/tour_detail?tid=` + results[i].id + `" class="list-group-item list-group-item-action flex-column align-items-start">
+              <div class="d-flex w-100 justify-content-between">
+                <!--tittle-->
+                <h5 class="mb-1" id="tittle">` + results[i].title + `</h5>
 
-app.get('/detail', function (request, response) {
-    var id = request.query.rn;
-    var status;
-    var bugDetail = `&nbsp`;
-    connection.query('SELECT * FROM report WHERE id = ?', [id], function (error, results, fields) {
-        //console.log(results[0]);
-        if (results[0].status == 0) { status = "Open <span style='padding-left:7em'>" + openicon + "</span>"; }
-        else if (results[0].status == 1) { status = "Processing <span style='padding-left:7em'>" + processingicon + "</span>"; }
-        else if (results[0].status == 2) { status = "Closed <span style='padding-left:7em'>" + closeicon + "</span>"; }
-        else { status = "Error"; }
-        if (results.length >= 0) {
-            bugDetail += `<div class="left">
-                <div class="right">
-                    <div class="card" style="width: 18rem;">
-                        <div class="card-body">
-                            <h5 class="card-title"> Error Code: <a id="username">` + results[0].errorcode + `</a></h5>
-                            <p class="card-text"> Starter: <a id="errorcode">` + results[0].username + `</a> </p>
-                        </div>
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item"> Status: <a id="status">` + status + `</a> </li>
-                            <li class="list-group-item"> Created Date: <a id="date">` + results[0].time + `</a></li>
-                        </ul>
-                    </div>
+                <!--date-->
+                <div class="">
+                  <small id="date">` + results[i].date + `</small>
+                  <p> <small>Rating:</small> ` + results[i].rating + ` </p>
                 </div>
-                <div id="accordion">
-                    <div class="card">
-                        <div class="card-header">
+              </div>
+              <!--creator-->
+              <small>Created By:</small>
+              <small id="username">` + results[i].username + `</small>
+            </a>
+          </div>
+
+
+
+  `;
+                    }
+                    html = `<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <title>show tour</title>
+
+
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <a class="navbar-brand" href="/home">Tour Guy</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="/home">Home <span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="/review">Review Tour<span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="#">My profile <span class="sr-only">(current)</span></a>
+          </li>
+        </ul>
+        <form class="form-inline my-2 my-lg-0" action="search" method="get">
+          <input class="form-control mr-sm-2" name ="keyword" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+      </div>
+    </nav>
+
+
+    <br>
+`+ tourhtml + `
+</body>
+</html>`
+                    response.setHeader('Content-type', 'text/html');
+                    response.write(html);
+                    response.end();
+                } else {
+                    response.setHeader('Content-type', 'text/html');
+                    response.send('No Tour Yet');
+                    response.end();
+                }
+            } else {
+                response.redirect('/home');
+            }
+        });
+    }
+    else {
+        response.redirect('/login');
+    }
+});
+//========================================================
+//Join tour===============================================
+
+app.get('/join', function (request, response) {
+    if (request.session.loggedin) {
+        var tid = request.query.tid;
+        var username = request.session.username;
+        connection.query('INSERT INTO joined (username, tour_id) VALUES (?,?)', [username, tid], function (error, results, fields) {
+            if (error) {
+                response.redirect('/tour_detail?tid=' + tid);
+            } else {
+                response.redirect('/tour_detail?tid='+ tid);
+            }
+            response.end();
+        });
+
+    }
+    else {
+        response.redirect('/login');
+    }
+});
+
+//========================================================
+
+//Cancel tour=============================================
+
+app.get('/cancel', function (request, response) {
+    if (request.session.loggedin) {
+        var tid = request.query.tid;
+        var username = request.session.username;
+        connection.query('DELETE FROM joined WHERE username = ? and tour_id = ?', [username, tid], function (error, results, fields) {
+            if (error) {
+                response.redirect('/tour_detail?tid=' + tid);
+            } else {
+                response.redirect('/tour_detail?tid=' + tid);
+            }
+            response.end();
+        });
+
+    }
+    else {
+        response.redirect('/login');
+    }
+});
+
+//========================================================
+
+//Detail tour=============================================
+
+app.get('/tour_detail', function (request, response) {
+    var tid = request.query.tid;
+    var username = request.session.username;
+    var tourDetail = `&nbsp`;
+    if (request.session.loggedin) {
+        connection.query('SELECT * FROM tour WHERE id = ?', [tid], function (error, results, fields) {
+            connection.query('SELECT * FROM joined WHERE tour_id = ? and username = ?', [tid, username], function (error1, results1, fields) {
+            if (results) {
+                if (results.length >= 0) {
+                    if (request.session.role == "tourist" && request.session.username == results[0].username) {
+                        tourDetail += `<div class="left">
+                      <div class="right">
+                        <div class="card" style="width: 18rem;">
+                          <div class="card-body">
+                            <h5 class="card-title"> Username: <a id="username">`+ results[0].username + `</a></h5>
+                          </div>
+                          <ul class="list-group list-group-flush">
+                            <li class="list-group-item"> Rating: <a id="rating">`+ results[0].rating + `</a> </li>
+                            <li class="list-group-item"> Created Date: <a id="date">`+ results[0].date + `</a></li>
+                            <li class="list-group-item"><a href="/delete?tid=` + results[0].id + `" class="btn btn-warning">Delete Tour</a></li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div id="accordion">
+                        <div class="card">
+                          <div class="card-header">
                             <h5 class="mb-0">
 
-                                <p id="tittle">` + results[0].subject + `</p>
+                                <p id="tittle">` + results[0].title + `</p>
 
                             </h5>
-                        </div>
-                        <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                          </div>
+                          <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
                             <div class="card-body">
-                                ` + results[0].description + `
-        </div>
-                        </div>
-                    </div>
-                </div>
-            </div>`
-        }
-        else {
-            response.redirect('/bug');
-            response.end();
-        }
-        var html = `<!DOCTYPE html>
-    <html>
-        <head>
-            <meta charset="utf-8">
-                <title>home</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-                    <style media="screen">
-                        #welcome{
-                            padding-top: 60px;
-          padding-bottom: 50px;
-          text-align: center;
-        }
-        .image{
-         width: 200px;
-        }
-        #center{
-         margin-left: auto;
-         margin-right: auto;
-        }
-        table tr td{
-          padding-bottom: 30px;
-          text-align: center;
-        }
-        .left{
-          margin-left: auto;
-          margin-right: auto;
-          width: 800px;
-          padding-right:5px;
-        }
-
-        .right{
-          margin-right: auto;
-          margin-left: auto;
-          display: inline-block;
-          float: right;
-          padding-left:5px;
-        }
-      </style>
-  </head>
-                <body>
-                    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-                        <div class="container-fluid">
-                            <a class="navbar-brand" href="/">Bug Tracker</a>
-                            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-                                <span class="navbar-toggler-icon"></span>
-                            </button>
-                            <div class="collapse navbar-collapse" id="navbarText">
-                                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                                    <li class="nav-item">
-                                        <a class="nav-link active" aria-current="page" href="/">Home</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/report">New Bug</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/aboutUs">About Us</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="/bug">Bug Record</a>
-                                    </li>
-                                </ul>
+                              `+ results[0].description + `
                             </div>
+                          </div>
                         </div>
-                    </nav>
-                <br>`
-            + bugDetail +
-            `</body>
+                      </div>
+                    </div>`}
+                      else if (request.session.role == "tourist") {
+                            tourDetail += `<div class="left">
+                      <div class="right">
+                        <div class="card" style="width: 18rem;">
+                          <div class="card-body">
+                            <h5 class="card-title"> Username: <a id="username">`+ results[0].username + `</a></h5>
+                          </div>
+                          <ul class="list-group list-group-flush">
+                            <li class="list-group-item"> Rating: <a id="rating">`+ results[0].rating + `</a> </li>
+                            <li class="list-group-item"> Created Date: <a id="date">`+ results[0].date + `</a></li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div id="accordion">
+                        <div class="card">
+                          <div class="card-header">
+                            <h5 class="mb-0">
+
+                                <p id="tittle">` + results[0].title + `</p>
+
+                            </h5>
+                          </div>
+                          <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                            <div class="card-body">
+                              `+ results[0].description + `
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>`}
+                    else {
+                       console.log(results1.length);
+                        if (results1.length > 0) {
+                                
+                                tourDetail += `<div class="left">
+                      <div class="right">
+                        <div class="card" style="width: 18rem;">
+                          <div class="card-body">
+                            <h5 class="card-title"> Username: <a id="username">`+ results[0].username + `</a></h5>
+                          </div>
+                          <ul class="list-group list-group-flush">
+                            <li class="list-group-item"> Rating: <a id="rating">`+ results[0].rating + `</a> </li>
+                            <li class="list-group-item"> Created Date: <a id="date">`+ results[0].date + `</a></li>
+                            <li class="list-group-item"><a href="/cancel?tid=` + tid + `" class="btn btn-warning">Cancel</a></li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div id="accordion">
+                        <div class="card">
+                          <div class="card-header">
+                            <h5 class="mb-0">
+
+                                <p id="tittle">` + results[0].title + `</p>
+
+                            </h5>
+                          </div>
+                          <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                            <div class="card-body">
+                              `+ results[0].description + `
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>`
+                            }
+                            else {
+                                tourDetail += `<div class="left">
+                      <div class="right">
+                        <div class="card" style="width: 18rem;">
+                          <div class="card-body">
+                            <h5 class="card-title"> Username: <a id="username">`+ results[0].username + `</a></h5>
+                          </div>
+                          <ul class="list-group list-group-flush">
+                            <li class="list-group-item"> Rating: <a id="rating">`+ results[0].rating + `</a> </li>
+                            <li class="list-group-item"> Created Date: <a id="date">`+ results[0].date + `</a></li>
+                            <li class="list-group-item"><a href="/join?tid=`+ tid +`" class="btn btn-primary">Join Tour</a></li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div id="accordion">
+                        <div class="card">
+                          <div class="card-header">
+                            <h5 class="mb-0">
+
+                                <p id="tittle">` + results[0].title + `</p>
+
+                            </h5>
+                          </div>
+                          <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                            <div class="card-body">
+                              `+ results[0].description + `
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>`
+                            }
+                    }
+                    
+                }
+                else {
+                    response.setHeader('Content-type', 'text/html');
+                    response.send('No Tour Yet');
+                    response.end();
+                }
+            }
+            else {
+                response.setHeader('Content-type', 'text/html');
+                response.send('No Tour Yet');
+                response.end();
+            }
+            var html = `<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <title>show tour</title>
+    <style media="screen">
+
+    .left{
+      margin-left: auto;
+      margin-right: auto;
+      width: 800px;
+    }
+
+    .right{
+      margin-right: auto;
+      margin-left: 5px;
+      display: inline-block;
+      float: right;
+    }
+
+    </style>
+
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <a class="navbar-brand" href="#">Tour Guy</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="/home">Home <span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="/tourlist">Review Tour<span class="sr-only">(current)</span></a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="#">My profile <span class="sr-only">(current)</span></a>
+          </li>
+        </ul>
+        <form class="form-inline my-2 my-lg-0">
+          <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+      </div>
+    </nav>
+<br>`
+                + tourDetail +
+                `</body>
 </html>`
-        response.setHeader('Content-type', 'text/html');
-        response.write(html);
-        response.end();
-    });
+            response.setHeader('Content-type', 'text/html');
+            response.write(html);
+            response.end();
+            });
+        });
+    }
+    else {
+        response.redirect('/login');
+    }
 });
 
 //========================================================

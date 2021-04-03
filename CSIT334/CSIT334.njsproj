@@ -42,6 +42,8 @@
     <Content Include="html\login.html" />
     <Content Include="html\register.html" />
     <Content Include="html\style.css" />
+    <Content Include="html\submitted.html" />
+    <Content Include="html\tourist_home.html" />
     <Content Include="server.js" />
     <Content Include="package.json" />
     <Content Include="README.md" />

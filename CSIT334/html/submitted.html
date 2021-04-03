@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>home</title>
+    	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+      <style media="screen">
+          .thankyou {
+              padding-top: 150px;
+              text-align: center;
+          }
+
+              .thankyou img {
+                  padding-top: 50px;
+                  width: 150px;
+              }
+		#redirect{
+          padding-top: 10px;
+          padding-bottom: 50px;
+          text-align: center;
+        }
+        .image{
+          width: 200px;
+        }
+        #center{
+         margin-left: auto;
+         margin-right: auto;
+        }
+        table tr td{
+          padding-bottom: 30px;
+          text-align: center;
+        }
+      </style>
+  </head>
+  <body>
+      <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+          <a class="navbar-brand" href="/home">Tour Guy</a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+              <ul class="navbar-nav mr-auto">
+                  <li class="nav-item active">
+                      <a class="nav-link" href="/home">Home <span class="sr-only">(current)</span></a>
+                  </li>
+                  <li class="nav-item active">
+                      <a class="nav-link" href="/tourlist">Review Tour<span class="sr-only">(current)</span></a>
+                  </li>
+                  <li class="nav-item active">
+                      <a class="nav-link" href="#">My profile <span class="sr-only">(current)</span></a>
+                  </li>
+              </ul>
+              <form class="form-inline my-2 my-lg-0" action="search" method="get">
+                  <input class="form-control mr-sm-2" name="keyword" type="search" placeholder="Search" aria-label="Search">
+                  <button class="btn btn-primary" type="submit">Search</button>
+              </form>
+          </div>
+      </nav>
+
+
+      <div class="thankyou">
+          <h1 class="display-1">Thank you !</h1>
+          <br>
+          <h3>We will follow it as soon as possible</h3>
+          <h3 id="redirect">&nbsp;</h3>
+          <img src="https://raw.githubusercontent.com/RyanL-29/CSIT314/master/CSIT314/html/checked.png" alt="">
+      </div>
+      <script>
+          var countdown = 3;
+          var x = setInterval(function () {
+              document.getElementById("redirect").innerHTML = "Redirect in " + countdown + " second";
+              if (countdown < 1) {
+                  clearInterval(x);
+              }
+              countdown--;
+          }, 1000);
+          setTimeout(function () {
+
+              window.location.replace("/home");
+
+          }, 3000);
+      </script>
+  </body>
+</html>
